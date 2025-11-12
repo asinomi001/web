@@ -94,7 +94,6 @@
 
 <script>
 (() => {
-  const accountCard = document.getElementById('accountCard');
   const userAvatar = document.getElementById('userAvatar');
   const avatarInput = document.getElementById('avatarInput');
   const userName = document.getElementById('userName');
@@ -110,64 +109,46 @@
   let loggedUser = JSON.parse(localStorage.getItem('current_user'));
 
   if (!loggedUser) {
-    alert("You are not logged in!");
+    alert("⚠️ You are not logged in!");
     window.location = "index.html";
     return;
   }
 
   let current = users.find(u => u.id === loggedUser.id);
   if (!current) {
-    alert("Account not found!");
+    alert("⚠️ Account not found!");
     localStorage.removeItem('current_user');
     window.location = "index.html";
     return;
   }
 
-  // Отображаем данные
   userAvatar.src = current.avatar || 'images/default_avatar.png';
   userName.textContent = current.name;
   userUsername.textContent = current.username;
   userID.textContent = current.id;
 
-  // --- Изменение имени ---
   saveNameBtn.addEventListener('click', () => {
     const newName = nameInput.value.trim();
-    if (!newName) return alert("⚠️ Please enter a name.");
+    if (!newName) return alert("Please enter a name.");
     current.name = newName;
     userName.textContent = newName;
     updateUser(current);
-    nameInput.value = '';
-    alert("✅ Name changed!");
+    alert("✅ Name updated!");
   });
 
-  // --- Смена пароля ---
   changePassBtn.addEventListener('click', () => {
     const oldPass = document.getElementById('oldPass').value.trim();
     const newPass = document.getElementById('newPass').value.trim();
 
-    if (!oldPass || !newPass) {
-      alert("⚠️ Please fill both fields!");
-      return;
-    }
-
-    if (oldPass !== current.password) {
-      alert("❌ Incorrect current password!");
-      return;
-    }
-
-    if (newPass.length < 4) {
-      alert("⚠️ Password too short!");
-      return;
-    }
+    if (!oldPass || !newPass) return alert("⚠️ Fill both fields!");
+    if (oldPass !== current.password) return alert("❌ Wrong current password!");
+    if (newPass.length < 4) return alert("⚠️ Password too short!");
 
     current.password = newPass;
     updateUser(current);
-    document.getElementById('oldPass').value = '';
-    document.getElementById('newPass').value = '';
-    alert("✅ Password successfully changed!");
+    alert("✅ Password changed successfully!");
   });
 
-  // --- Смена аватарки ---
   userAvatar.addEventListener('click', () => avatarInput.click());
   avatarInput.addEventListener('change', e => {
     const file = e.target.files[0];
@@ -177,30 +158,23 @@
       current.avatar = evt.target.result;
       userAvatar.src = current.avatar;
       updateUser(current);
-      alert("✅ Avatar updated!");
     };
     reader.readAsDataURL(file);
   });
 
-  // --- Выход из аккаунта ---
   logoutBtn.addEventListener('click', () => {
     localStorage.removeItem('current_user');
     window.location = "index.html";
   });
 
-  // --- Удаление аккаунта ---
   deleteAccountBtn.addEventListener('click', () => {
-    const confirmDelete = confirm("⚠️ Are you sure you want to delete your account? This cannot be undone!");
-    if (!confirmDelete) return;
-
+    if (!confirm("Delete account?")) return;
     users = users.filter(u => u.id !== current.id);
     localStorage.setItem('users_db', JSON.stringify(users));
     localStorage.removeItem('current_user');
-    alert("🗑️ Account deleted successfully!");
     window.location = "index.html";
   });
 
-  // --- Обновление данных в LocalStorage ---
   function updateUser(updatedUser) {
     const index = users.findIndex(u => u.id === updatedUser.id);
     if (index !== -1) {

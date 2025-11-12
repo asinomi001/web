@@ -28,24 +28,25 @@
 </form>
 
 <script>
-// Проверка, если пользователь уже залогинен
-const loggedUser = JSON.parse(localStorage.getItem('logged_user'));
-if(loggedUser){ window.location.href='account.html'; }
+const loggedUser = JSON.parse(localStorage.getItem('current_user'));
+if (loggedUser) {
+  window.location.href = 'account.html';
+}
 
-document.getElementById('loginForm').addEventListener('submit', e=>{
+document.getElementById('loginForm').addEventListener('submit', e => {
   e.preventDefault();
   const login = document.getElementById('login').value.trim();
   const password = document.getElementById('password').value.trim();
 
   let users = JSON.parse(localStorage.getItem('users_db')) || [];
-  const user = users.find(u=>u.login===login && u.password===password);
+  const user = users.find(u => u.username === login && u.password === password);
 
-  if(user){
-    localStorage.setItem('logged_user', JSON.stringify(user));
-    alert('Successfully logged in!');
-    window.location.href='account.html';
+  if (user) {
+    localStorage.setItem('current_user', JSON.stringify(user));
+    alert('✅ Successfully logged in!');
+    window.location.href = 'account.html';
   } else {
-    alert('Incorrect username or password!');
+    alert('❌ Incorrect username or password!');
   }
 });
 </script>
