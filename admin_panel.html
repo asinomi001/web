@@ -17,7 +17,6 @@
   </style>
 </head>
 <body>
-
 <h1>Admin Panel</h1>
 
 <div id="loginDiv">
@@ -31,26 +30,35 @@
 <div id="adminDiv" style="display:none;">
   <table id="usersTable">
     <tr>
-      <th>ID</th><th>Avatar</th><th>Username (Login)</th><th>Name</th><th>Password</th><th>Actions</th>
+      <th>ID</th><th>Avatar</th><th>Username</th><th>Name</th><th>Password</th><th>Actions</th>
     </tr>
   </table>
   <button id="logoutBtn">Logout</button>
 </div>
 
 <script>
-const ADMIN_LOGIN = 'as1owner';
-const ADMIN_PASS = 'where1am';
+(()=>{
 
-const loginDiv = document.getElementById('loginDiv');
-const adminDiv = document.getElementById('adminDiv');
-const loginBtn = document.getElementById('loginBtn');
-const logoutBtn = document.getElementById('logoutBtn');
-const usersTable = document.getElementById('usersTable');
+// Простое шифрование для скрытия логина/пароля
+function encrypt(str){ return btoa(str); }
+function decrypt(str){ return atob(str); }
+
+const ADMIN_LOGIN=encrypt('as1owner');
+const ADMIN_PASS=encrypt('where1am');
+
+let isAdmin=false;
+
+const loginDiv=document.getElementById('loginDiv');
+const adminDiv=document.getElementById('adminDiv');
+const loginBtn=document.getElementById('loginBtn');
+const logoutBtn=document.getElementById('logoutBtn');
+const usersTable=document.getElementById('usersTable');
 
 loginBtn.addEventListener('click', ()=>{
-  const login = document.getElementById('adminLogin').value.trim();
-  const pass = document.getElementById('adminPass').value.trim();
-  if(login===ADMIN_LOGIN && pass===ADMIN_PASS){
+  const login=document.getElementById('adminLogin').value.trim();
+  const pass=document.getElementById('adminPass').value.trim();
+  if(encrypt(login)===ADMIN_LOGIN && encrypt(pass)===ADMIN_PASS){
+    isAdmin=true;
     loginDiv.style.display='none';
     adminDiv.style.display='block';
     renderUsers();
@@ -58,42 +66,41 @@ loginBtn.addEventListener('click', ()=>{
 });
 
 logoutBtn.addEventListener('click', ()=>{
+  isAdmin=false;
   loginDiv.style.display='block';
   adminDiv.style.display='none';
 });
 
 function renderUsers(){
-  let users = JSON.parse(localStorage.getItem('users_db')) || [];
-  usersTable.innerHTML = `
+  if(!isAdmin) return;
+  let users=JSON.parse(localStorage.getItem('users_db')||'[]');
+  usersTable.innerHTML=`
     <tr>
-      <th>ID</th><th>Avatar</th><th>Username (Login)</th><th>Name</th><th>Password</th><th>Actions</th>
-    </tr>
-  `;
+      <th>ID</th><th>Avatar</th><th>Username</th><th>Name</th><th>Password</th><th>Actions</th>
+    </tr>`;
   users.forEach(u=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><input type="text" value="${u.id}" data-id="${u.id}" class="idInput"></td>
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${u.id}</td>
       <td><img class="avatar" src="${u.avatar}"><input type="file" data-id="${u.id}" class="avatarInput" accept="image/*"></td>
       <td><input type="text" value="${u.username}" data-id="${u.id}" class="usernameInput"></td>
       <td><input type="text" value="${u.name}" data-id="${u.id}" class="nameInput"></td>
       <td><input type="text" value="${u.password}" data-id="${u.id}" class="passInput"></td>
-      <td><button class="saveBtn" data-id="${u.id}">Save</button> <button class="delBtn" data-id="${u.id}">Delete</button></td>
-    `;
+      <td><button class="saveBtn" data-id="${u.id}">Save</button> <button class="delBtn" data-id="${u.id}">Delete</button></td>`;
     usersTable.appendChild(tr);
   });
 
   document.querySelectorAll('.saveBtn').forEach(btn=>{
-    btn.addEventListener('click', e=>{
-      const id = parseInt(btn.dataset.id);
-      let users = JSON.parse(localStorage.getItem('users_db')) || [];
-      const index = users.findIndex(u=>u.id===id);
+    btn.addEventListener('click', ()=>{
+      if(!isAdmin) return;
+      const id=parseInt(btn.dataset.id);
+      let users=JSON.parse(localStorage.getItem('users_db')||'[]');
+      const index=users.findIndex(u=>u.id===id);
       if(index!==-1){
-        users[index].id = parseInt(document.querySelector(`.idInput[data-id="${id}"]`).value.trim());
-        users[index].username = document.querySelector(`.usernameInput[data-id="${id}"]`).value.trim();
-        users[index].name = document.querySelector(`.nameInput[data-id="${id}"]`).value.trim();
-        users[index].password = document.querySelector(`.passInput[data-id="${id}"]`).value.trim();
-        localStorage.setItem('users_db', JSON.stringify(users));
-        alert('User updated!');
+        users[index].username=document.querySelector(`.usernameInput[data-id="${id}"]`).value.trim();
+        users[index].name=document.querySelector(`.nameInput[data-id="${id}"]`).value.trim();
+        users[index].password=document.querySelector(`.passInput[data-id="${id}"]`).value.trim();
+        localStorage.setItem('users_db',JSON.stringify(users));
         renderUsers();
       }
     });
@@ -101,27 +108,29 @@ function renderUsers(){
 
   document.querySelectorAll('.delBtn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
+      if(!isAdmin) return;
       if(!confirm('Delete this user?')) return;
-      const id = parseInt(btn.dataset.id);
-      let users = JSON.parse(localStorage.getItem('users_db')) || [];
-      users = users.filter(u=>u.id!==id);
-      localStorage.setItem('users_db', JSON.stringify(users));
+      const id=parseInt(btn.dataset.id);
+      let users=JSON.parse(localStorage.getItem('users_db')||'[]');
+      users=users.filter(u=>u.id!==id);
+      localStorage.setItem('users_db',JSON.stringify(users));
       renderUsers();
     });
   });
 
   document.querySelectorAll('.avatarInput').forEach(inp=>{
     inp.addEventListener('change', e=>{
-      const id = parseInt(inp.dataset.id);
-      const file = inp.files[0];
+      if(!isAdmin) return;
+      const id=parseInt(inp.dataset.id);
+      const file=inp.files[0];
       if(file){
-        const reader = new FileReader();
-        reader.onload = function(evt){
-          let users = JSON.parse(localStorage.getItem('users_db')) || [];
-          const index = users.findIndex(u=>u.id===id);
+        const reader=new FileReader();
+        reader.onload=function(evt){
+          let users=JSON.parse(localStorage.getItem('users_db')||'[]');
+          const index=users.findIndex(u=>u.id===id);
           if(index!==-1){
-            users[index].avatar = evt.target.result;
-            localStorage.setItem('users_db', JSON.stringify(users));
+            users[index].avatar=evt.target.result;
+            localStorage.setItem('users_db',JSON.stringify(users));
             renderUsers();
           }
         }
@@ -129,8 +138,7 @@ function renderUsers(){
       }
     });
   });
-}
+})();
 </script>
-
 </body>
 </html>
