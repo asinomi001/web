@@ -1,17 +1,148 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Admin</title></head>
-<body style="font-family:Arial;padding:20px;">
-<h2>Admin login</h2>
-<form id="adm">
- <input id="alog" placeholder="login"><br>
- <input id="apass" placeholder="password" type="password"><br>
- <button type="submit">Enter</button>
-</form>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Admin Panel - Asinomi</title>
+<link rel="icon" type="images/x-icon" href="images/title.ico" />
+<style>
+body {
+  font-family: "Comic Sans MS";
+  background-color: #111;
+  color: white;
+  text-align: center;
+  margin: 0;
+  padding: 20px;
+}
+.container {
+  background: #222;
+  border-radius: 15px;
+  padding: 20px;
+  width: 80%;
+  margin: auto;
+  box-shadow: 0 0 20px rgba(255,255,255,0.2);
+}
+input, button, select {
+  font-family: inherit;
+  margin: 5px;
+  padding: 8px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+}
+input {
+  width: 200px;
+}
+button {
+  background: #2b7cff;
+  color: white;
+  cursor: pointer;
+}
+button:hover {
+  background: #1a55b5;
+}
+.user-card {
+  background: #333;
+  border-radius: 10px;
+  padding: 10px;
+  margin: 10px;
+}
+</style>
+</head>
+<body>
+
+<h1>Admin Panel</h1>
+<p>Manage all user accounts</p>
+
+<div id="loginSection">
+  <h3>Admin Login</h3>
+  <input type="text" id="adminLogin" placeholder="Login">
+  <input type="password" id="adminPassword" placeholder="Password">
+  <button onclick="adminLogin()">Enter</button>
+</div>
+
+<div id="adminPanel" style="display:none;">
+  <h2>Users</h2>
+  <div id="usersList"></div>
+</div>
+
 <script>
-adm.onsubmit = e=>{
- e.preventDefault();
- if(alog.value==='as1owner' && apass.value==='where1am'){ localStorage.setItem('admin_logged','1'); location.href='admin_panel.html'; }
- else alert('Wrong admin credentials');
-};
+const ADMIN_LOGIN = "as1owner";
+const ADMIN_PASSWORD = "where1am";
+
+function adminLogin() {
+  const login = document.getElementById("adminLogin").value.trim();
+  const pass = document.getElementById("adminPassword").value.trim();
+  if(login === ADMIN_LOGIN && pass === ADMIN_PASSWORD){
+    document.getElementById("loginSection").style.display = "none";
+    document.getElementById("adminPanel").style.display = "block";
+    loadUsers();
+  } else {
+    alert("Incorrect admin credentials!");
+  }
+}
+
+function loadUsers(){
+  const users = JSON.parse(localStorage.getItem("users") || "[]");
+  const list = document.getElementById("usersList");
+  list.innerHTML = "";
+
+  if(users.length === 0){
+    list.innerHTML = "<p>No users registered.</p>";
+    return;
+  }
+
+  users.forEach((user, index) => {
+    const div = document.createElement("div");
+    div.className = "user-card";
+    div.innerHTML = `
+      <p><b>Username:</b> ${user.username}</p>
+      <p><b>Name:</b> ${user.name || "-"}</p>
+      <p><b>Email:</b> ${user.email || "-"}</p>
+      <p><b>ID:</b> <input type="number" id="id_${index}" value="${user.id}" /></p>
+      <p><b>Password:</b> <input type="text" id="pass_${index}" value="${user.password}" /></p>
+      <button onclick="saveUser(${index})">💾 Save</button>
+      <button onclick="deleteUser(${index})" style="background:red;">🗑 Delete</button>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function saveUser(index){
+  const users = JSON.parse(localStorage.getItem("users") || "[]");
+  const idInput = document.getElementById(`id_${index}`).value.trim();
+  const passInput = document.getElementById(`pass_${index}`).value.trim();
+
+  if(!idInput || isNaN(idInput)){
+    alert("Invalid ID!");
+    return;
+  }
+
+  // Обновление данных пользователя
+  users[index].id = parseInt(idInput);
+  users[index].password = passInput;
+
+  // Обновляем все связи (друзья, чаты и т.д.)
+  const chats = JSON.parse(localStorage.getItem("chats") || "{}");
+  for(const chatId in chats){
+    chats[chatId].messages = chats[chatId].messages.map(msg => {
+      if(msg.senderId === users[index].oldId) msg.senderId = users[index].id;
+      return msg;
+    });
+  }
+  localStorage.setItem("chats", JSON.stringify(chats));
+
+  localStorage.setItem("users", JSON.stringify(users));
+  alert("User updated!");
+}
+
+function deleteUser(index){
+  const users = JSON.parse(localStorage.getItem("users") || "[]");
+  if(confirm(`Delete user ${users[index].username}?`)){
+    users.splice(index, 1);
+    localStorage.setItem("users", JSON.stringify(users));
+    loadUsers();
+  }
+}
 </script>
-</body></html>
+</body>
+</html>
