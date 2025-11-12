@@ -52,7 +52,6 @@
   loginBtn.addEventListener('click', () => {
     const login = document.getElementById('adminLogin').value.trim();
     const pass = document.getElementById('adminPass').value.trim();
-    // Простая проверка без шифрования
     if (login === ADMIN_LOGIN && pass === ADMIN_PASS) {
       isAdmin = true;
       loginDiv.style.display = 'none';
@@ -60,6 +59,8 @@
       renderUsers();
     } else {
       alert('Invalid credentials!');
+      document.getElementById('adminPass').value = '';
+      document.getElementById('adminLogin').focus();
     }
   });
 
@@ -97,14 +98,23 @@
     document.querySelectorAll('.saveBtn').forEach(btn => {
       btn.onclick = () => {
         if (!isAdmin) return;
-        const id = parseInt(btn.dataset.id);
+        const oldId = btn.dataset.id;
         let users = JSON.parse(localStorage.getItem('users_db') || '[]');
-        const index = users.findIndex(u => u.id === id);
+        const index = users.findIndex(u => u.id === oldId);
         if (index !== -1) {
-          users[index].id = parseInt(document.querySelector(`.idInput[data-id="${id}"]`).value);
-          users[index].username = document.querySelector(`.usernameInput[data-id="${id}"]`).value.trim();
-          users[index].name = document.querySelector(`.nameInput[data-id="${id}"]`).value.trim();
-          users[index].password = document.querySelector(`.passInput[data-id="${id}"]`).value.trim();
+          const newId = document.querySelector(`.idInput[data-id="${oldId}"]`).value.trim();
+
+          // Проверка на дубликаты ID
+          if (newId !== oldId && users.some(u => u.id === newId)) {
+            alert('❌ ID уже существует! Введите уникальный ID.');
+            return;
+          }
+
+          users[index].id = newId;
+          users[index].username = document.querySelector(`.usernameInput[data-id="${oldId}"]`).value.trim();
+          users[index].name = document.querySelector(`.nameInput[data-id="${oldId}"]`).value.trim();
+          users[index].password = document.querySelector(`.passInput[data-id="${oldId}"]`).value.trim();
+
           localStorage.setItem('users_db', JSON.stringify(users));
           renderUsers();
         }
@@ -115,7 +125,7 @@
       btn.onclick = () => {
         if (!isAdmin) return;
         if (!confirm('Delete this user?')) return;
-        const id = parseInt(btn.dataset.id);
+        const id = btn.dataset.id;
         let users = JSON.parse(localStorage.getItem('users_db') || '[]');
         users = users.filter(u => u.id !== id);
         localStorage.setItem('users_db', JSON.stringify(users));
@@ -126,7 +136,7 @@
     document.querySelectorAll('.avatarInput').forEach(inp => {
       inp.onchange = () => {
         if (!isAdmin) return;
-        const id = parseInt(inp.dataset.id);
+        const id = inp.dataset.id;
         const file = inp.files[0];
         if (file) {
           const reader = new FileReader();
