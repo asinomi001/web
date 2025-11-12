@@ -1,132 +1,334 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Friends</title></head>
-<body style="font-family:Arial;padding:12px;">
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<title>Friends / Chats</title>
+<link rel="icon" type="images/x-icon" href="images/title.ico" />
+<style>
+  /* общий стиль — похож на index.html (Comic Sans feel) */
+  body { font-family: "Comic Sans MS", "Segoe UI", Arial, sans-serif; margin:0; height:100vh; display:flex; background:#f3f6fb; }
+  .sidebar { width:340px; background:#fff; border-right:1px solid #ddd; display:flex; flex-direction:column; }
+  .header { padding:14px; background:#2b7cff; color:white; display:flex; align-items:center; justify-content:space-between; }
+  .header h2 { margin:0; font-size:18px; }
+  .search { padding:10px; }
+  .search input { width:100%; padding:8px; border-radius:8px; border:1px solid #ccc; }
+  .section-title { padding:8px 12px; color:#333; font-weight:bold; }
+  .list { flex:1; overflow:auto; padding-bottom:10px; }
+  .item { display:flex; align-items:center; padding:10px 12px; border-bottom:1px solid #f0f0f0; cursor:pointer; transition:background .12s; }
+  .item:hover { background:#f7fbff; }
+  .avatar { width:52px; height:52px; border-radius:50%; object-fit:cover; margin-right:12px; position:relative; }
+  .name { font-weight:bold; }
+  .sub { font-size:12px; color:#666; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:170px; }
+  .online-dot { width:12px; height:12px; border-radius:50%; background:#4caf50; border:2px solid white; position:absolute; right:-2px; bottom:-2px; }
+  .controls { padding:10px; display:flex; gap:8px; }
+  .btn { padding:8px 12px; border-radius:8px; border:0; background:#2b7cff; color:white; cursor:pointer; }
+  .btn.secondary { background:#eee; color:#333; }
+  /* main pane */
+  .main { flex:1; display:flex; flex-direction:column; }
+  .iframe-wrap { flex:1; border:0; }
+  /* top quick area in main */
+  .main-top { padding:12px; background:#fff; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; }
+  .small { font-size:13px; color:#444; }
+  /* responsive small */
+  @media (max-width:900px){ .sidebar{ width:100%; height:50vh; } .main{ height:50vh; } body{flex-direction:column;} }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="header">
+    <h2>Chats</h2>
+    <div>
+      <button class="btn" id="newChatBtn">New Chat</button>
+    </div>
+  </div>
+
+  <div class="search">
+    <input id="searchInput" placeholder="Search users, groups, usernames..." />
+  </div>
+
+  <div class="controls">
+    <button class="btn" id="createGroupBtn">+ New Group</button>
+    <button class="btn secondary" id="viewGroupsBtn">Groups</button>
+  </div>
+
+  <div class="section-title">People</div>
+  <div id="peopleList" class="list" style="max-height:220px;"></div>
+
+  <div class="section-title">Your chats</div>
+  <div id="chatsList" class="list"></div>
+</div>
+
+<div class="main">
+  <div class="main-top">
+    <div>
+      <span class="small" id="mainTitle">Select a chat to open</span>
+    </div>
+    <div>
+      <button class="btn secondary" id="openSavedBtn">Saved Messages</button>
+      <button class="btn" id="openFriendsAccount">My Account</button>
+    </div>
+  </div>
+
+  <!-- chat.html rendered in iframe for continuity with your site -->
+  <iframe id="chatFrame" class="iframe-wrap" src="" title="Chat"></iframe>
+</div>
+
 <script>
+/* ====== Auth check ====== */
 const me = JSON.parse(localStorage.getItem('logged_user'));
-if(!me){ alert('Please login'); location.href='login.html'; }
-</script>
+if(!me){ alert('Please log in first'); window.location.href='login.html'; }
 
-<h2>Friends & Chats</h2>
-<div>
-  <input id="search" placeholder="Search users/groups..." style="padding:6px;width:60%">
-  <button onclick="location.href='create_group.html'">New Group/Channel</button>
-  <button onclick="location.href='groups.html'">Groups</button>
-</div>
+/* ====== Data containers ====== */
+let users = JSON.parse(localStorage.getItem('my_users')||'[]');     // all users array
+let chats = JSON.parse(localStorage.getItem('my_chats')||'[]');     // chats: {id,type,members[],messages[],...}
+let groups = JSON.parse(localStorage.getItem('groups')||'[]');      // groups list
 
-<div style="margin-top:10px;">
-  <label>Add friend by username:</label>
-  <input id="addUsername"><button onclick="addFriend()">Add</button>
-</div>
+// ensure arrays exist
+if(!Array.isArray(users)) users = [];
+if(!Array.isArray(chats)) chats = [];
+if(!Array.isArray(groups)) groups = [];
 
-<h3>People</h3>
-<div id="people"></div>
+/* ====== Helpers ====== */
+const peopleList = document.getElementById('peopleList');
+const chatsList = document.getElementById('chatsList');
+const searchInput = document.getElementById('searchInput');
+const chatFrame = document.getElementById('chatFrame');
+const mainTitle = document.getElementById('mainTitle');
 
-<h3>Your chats</h3>
-<div id="chats"></div>
-
-<script>
-let users = JSON.parse(localStorage.getItem('my_users')||'[]');
-let groups = JSON.parse(localStorage.getItem('groups')||'[]');
-let chats = JSON.parse(localStorage.getItem('my_chats')||'[]');
-
-// render people (exclude me)
-function renderPeople(filter=''){
-  const box = document.getElementById('people'); box.innerHTML='';
-  users.filter(u=>u.id!==me.id && (u.username.toLowerCase().includes(filter) || u.name.toLowerCase().includes(filter))).forEach(u=>{
-    const div = document.createElement('div');
-    div.style.padding='6px';
-    div.innerHTML = `<img src="${u.avatar}" width=40 style="border-radius:50%;vertical-align:middle"> <b>${u.username}</b> (${u.name})
-      <button style="margin-left:8px" onclick="openChat(${u.id})">Chat</button>
-      <button onclick="addFriendDirect(${u.username})">Add friend</button>
-    `;
-    box.appendChild(div);
-  });
+function isOnline(userId){
+  // simple random-ish online simulation: deterministic per session (but ok to randomize)
+  return Math.random() < 0.6;
 }
 
-function renderChats(){
-  const box=document.getElementById('chats'); box.innerHTML='';
-  // show private chats where me is a participant
-  // We store chats as array of {id, type:'private'|'group'|'saved', members:[ids], messages:[]}
-  chats.forEach(c=>{
-    if(c.type==='private' && c.members.includes(me.id)){
-      const otherId = c.members.find(id=>id!==me.id);
-      const other = users.find(u=>u.id===otherId);
-      const btn = document.createElement('div');
-      btn.style.padding='6px';
-      const last = c.messages.length? (typeof c.messages[c.messages.length-1]==='string'?c.messages[c.messages.length-1]: (c.messages[c.messages.length-1].text||'media')) : 'No messages';
-      btn.innerHTML = `<img src="${other.avatar}" width=40 style="border-radius:50%;vertical-align:middle"> <b>${other.username}</b>
-        <div style="font-size:12px;color:#555">${last}</div>
-        <button onclick="openChat(${other.id})">Open</button>`;
-      box.appendChild(btn);
-    }
-    if(c.type==='saved' && c.owner===me.id){
-      const btn = document.createElement('div');
-      btn.innerHTML = `<b>Saved Messages</b> <button onclick="openSaved()">Open</button>`;
-      box.appendChild(btn);
-    }
-  });
+function formatLastMessage(chat){
+  if(!chat.messages || chat.messages.length===0) return 'No messages yet';
+  const m = chat.messages[chat.messages.length-1];
+  if(m.type==='text') return m.text.slice(0,40);
+  if(m.type==='file') return '📎 ' + (m.name || 'file');
+  if(m.type==='voice') return '🎤 Voice note';
+  if(m.type==='video_note') return '📹 Video note';
+  return 'message';
 }
 
-// helper to ensure private chat exists
 function ensurePrivateChat(a,b){
-  let c = chats.find(ch=>ch.type==='private' && ch.members.includes(a) && ch.members.includes(b));
+  let c = chats.find(ch => ch.type==='private' && ch.members.includes(a) && ch.members.includes(b));
   if(!c){
-    const id = Date.now() + Math.floor(Math.random()*1000);
-    c = {id,type:'private',members:[a,b],messages:[]};
+    c = { id: Date.now()+Math.floor(Math.random()*1000), type:'private', members:[a,b], messages:[] };
     chats.push(c);
     localStorage.setItem('my_chats', JSON.stringify(chats));
   }
   return c;
 }
 
-function openChat(otherId){
-  ensurePrivateChat(me.id, otherId);
-  localStorage.setItem('current_chat', JSON.stringify({type:'private',with:otherId}));
-  location.href='chat.html';
+function openChatByChatObject(chatObj){
+  // store current_chat so chat.html can open appropriate conversation
+  localStorage.setItem('current_chat', JSON.stringify({ type: chatObj.type, id: chatObj.id, with: (chatObj.type==='private' ? chatObj.members.find(id=>id!==me.id) : null), groupId: chatObj.type==='group' ? chatObj.id : null, owner: (chatObj.type==='saved'?chatObj.owner:undefined) }));
+  chatFrame.src = 'chat.html';
+  mainTitle.textContent = chatObj.type==='private' ? ('Chat with ' + users.find(u=>u.id===chatObj.members.find(id=>id!==me.id)).username) : (chatObj.type==='saved' ? 'Saved Messages' : 'Group: '+ (groups.find(g=>g.id===chatObj.id)?.name || 'Group'));
+  localStorage.setItem('currentChatID', chatObj.id); // for other flows
 }
 
-function openSaved(){
-  // ensure saved chat exists with type saved and owner me.id
-  let c = chats.find(ch=>ch.type==='saved' && ch.owner===me.id);
-  if(!c){ c={id:Date.now(),type:'saved',owner:me.id,members:[me.id],messages:[]}; chats.push(c); localStorage.setItem('my_chats',JSON.stringify(chats)); }
-  localStorage.setItem('current_chat', JSON.stringify({type:'saved',owner:me.id}));
-  location.href='chat.html';
+function openPrivateWithUser(userId){
+  const c = ensurePrivateChat(me.id, userId);
+  openChatByChatObject(c);
+  renderAll(); // refresh lists
 }
 
-function addFriend(){
-  const name = document.getElementById('addUsername').value.trim();
-  addFriendDirect(name);
+/* ====== Render People ====== */
+function renderPeople(filter=''){
+  peopleList.innerHTML = '';
+  // show all users except me
+  users.filter(u => u.id !== me.id && (u.username.toLowerCase().includes(filter) || (u.name||'').toLowerCase().includes(filter))).forEach(u=>{
+    const div = document.createElement('div');
+    div.className = 'item';
+    // avatar wrapper to include online dot
+    const avWrap = document.createElement('div'); avWrap.style.position='relative';
+    const img = document.createElement('img'); img.src = u.avatar || 'images/avatar1.png'; img.className='avatar';
+    avWrap.appendChild(img);
+    if(isOnline(u.id)){
+      const dot = document.createElement('div'); dot.className='online-dot'; avWrap.appendChild(dot);
+    }
+    const info = document.createElement('div'); info.style.flex='1';
+    const name = document.createElement('div'); name.className='name'; name.textContent = u.username;
+    const sub = document.createElement('div'); sub.className='sub'; sub.textContent = u.name || '';
+    const actions = document.createElement('div'); actions.innerHTML = `<button class="btn" style="margin-left:8px" onclick="event.stopPropagation(); openPrivateWithUser(${u.id})">Chat</button>
+      <button class="btn secondary" style="margin-left:6px" onclick="event.stopPropagation(); addFriend('${u.username}')">Add</button>`;
+    info.appendChild(name); info.appendChild(sub); info.appendChild(actions);
+    div.appendChild(avWrap); div.appendChild(info);
+    div.onclick = ()=> openPrivateWithUser(u.id);
+    peopleList.appendChild(div);
+  });
 }
-function addFriendDirect(username){
-  if(!username) return alert('Enter username');
+
+/* ====== Render Chats ====== */
+function renderChats(filter=''){
+  chatsList.innerHTML = '';
+  // show private chats where me participates, saved messages for me, and groups I am member of
+  // private
+  chats.filter(c => (c.type==='private' && c.members.includes(me.id)) || (c.type==='saved' && c.owner===me.id) || (c.type==='group' && c.members && c.members.includes(me.id))).forEach(c=>{
+    // optional filter: check participant name or group name
+    let shouldSkip = false;
+    if(filter){
+      if(c.type==='private'){
+        const other = users.find(u=>u.id===c.members.find(id=>id!==me.id));
+        if(!other || (!other.username.toLowerCase().includes(filter) && !(other.name||'').toLowerCase().includes(filter))) shouldSkip = true;
+      } else if(c.type==='group'){
+        const g = groups.find(gp=>gp.id===c.id);
+        if(!g || (!g.name.toLowerCase().includes(filter) && !(g.username||'').toLowerCase().includes(filter))) shouldSkip = true;
+      } else if(c.type==='saved'){
+        if(!('saved'.includes(filter))){} // keep
+      }
+    }
+    if(shouldSkip) return;
+
+    const div = document.createElement('div');
+    div.className='item';
+    const avWrap = document.createElement('div'); avWrap.style.position='relative';
+    let avatarSrc = 'images/avatar1.png';
+    let title = '';
+    if(c.type==='private'){
+      const other = users.find(u=>u.id===c.members.find(id=>id!==me.id));
+      avatarSrc = other?.avatar || avatarSrc;
+      title = other ? other.username : 'User';
+    } else if(c.type==='group'){
+      const g = groups.find(gp=>gp.id===c.id);
+      avatarSrc = g?.avatar || 'images/default_group.png';
+      title = g?.name || 'Group';
+    } else if(c.type==='saved'){
+      avatarSrc = me.avatar || avatarSrc;
+      title = 'Saved Messages';
+    }
+    const img = document.createElement('img'); img.src = avatarSrc; img.className='avatar';
+    avWrap.appendChild(img);
+    // online for private only
+    if(c.type==='private' && isOnline(c.members.find(id=>id!==me.id))){
+      const dot = document.createElement('div'); dot.className='online-dot'; avWrap.appendChild(dot);
+    }
+    const info = document.createElement('div'); info.style.flex='1';
+    const name = document.createElement('div'); name.className='name'; name.textContent = title;
+    const sub = document.createElement('div'); sub.className='sub'; sub.textContent = formatLastMessage(c);
+    info.appendChild(name); info.appendChild(sub);
+    const openBtn = document.createElement('div'); openBtn.innerHTML = `<button class="btn" onclick="event.stopPropagation(); openChatByChatObjectById(${c.id})">Open</button>`;
+    div.appendChild(avWrap); div.appendChild(info); div.appendChild(openBtn);
+    div.onclick = ()=> openChatByChatObject(c);
+    chatsList.appendChild(div);
+  });
+}
+
+// helper to open by id (onclick uses it)
+function openChatByChatObjectById(id){
+  const c = chats.find(x=>x.id==id);
+  if(c) openChatByChatObject(c);
+}
+
+/* ====== Create Group (file input for avatar) ====== */
+document.getElementById('createGroupBtn').addEventListener('click', ()=>{
+  const type = prompt('Type "group" or "channel"').toLowerCase();
+  if(type!=='group' && type!=='channel'){ alert('Invalid type'); return; }
+  const name = prompt('Group/Channel name:'); if(!name) return;
+  const username = prompt('Public username (no @):'); if(!username) return;
+  const desc = prompt('Description (optional):') || '';
+  // choose avatar file
+  const input = document.createElement('input'); input.type='file'; input.accept='image/*';
+  input.onchange = ()=>{
+    const f = input.files[0];
+    const r = new FileReader();
+    r.onload = e=>{
+      const avatarData = e.target.result;
+      const id = Date.now() + Math.floor(Math.random()*1000);
+      const newGroup = { id, type:'group', name, username, desc, avatar: avatarData, members: [me.id], messages: [] };
+      groups.push(newGroup);
+      localStorage.setItem('groups', JSON.stringify(groups));
+      // also create a chats entry so it appears in chats list
+      const chatObj = { id: newGroup.id, type:'group', members: [me.id], messages: [] };
+      chats.push(chatObj);
+      localStorage.setItem('my_chats', JSON.stringify(chats));
+      alert('Group created');
+      renderAll();
+      // auto-open
+      openChatByChatObject(chatObj);
+    };
+    if(f) r.readAsDataURL(f);
+    else { alert('No file'); }
+  };
+  input.click();
+});
+
+/* ====== New Chat button (open modal for username) ====== */
+document.getElementById('newChatBtn').addEventListener('click', ()=>{
+  const username = prompt('Enter username to start chat with:');
+  if(!username) return;
+  const user = users.find(u=>u.username===username);
+  if(!user) return alert('User not found');
+  openPrivateWithUser(user.id);
+});
+
+/* ====== View groups page ====== */
+document.getElementById('viewGroupsBtn').addEventListener('click', ()=> location.href='groups.html');
+
+/* ====== Saved messages button and account button ====== */
+document.getElementById('openSavedBtn').addEventListener('click', ()=>{
+  // ensure saved chat exists
+  let saved = chats.find(c => c.type==='saved' && c.owner===me.id);
+  if(!saved){ saved = { id: Date.now(), type:'saved', owner: me.id, members: [me.id], messages: [] }; chats.push(saved); localStorage.setItem('my_chats', JSON.stringify(chats)); }
+  openChatByChatObject(saved);
+});
+document.getElementById('openFriendsAccount').addEventListener('click', ()=> location.href='account.html');
+
+/* ====== Add Friend by username (used in people actions) ====== */
+function addFriend(username){
   const u = users.find(x=>x.username===username);
   if(!u) return alert('User not found');
-  // add to me.friends and to u.friends
-  let usersAll = JSON.parse(localStorage.getItem('my_users')||'[]');
-  const meIdx = usersAll.findIndex(x=>x.id===me.id);
-  const otherIdx = usersAll.findIndex(x=>x.id===u.id);
-  usersAll[meIdx].friends = usersAll[meIdx].friends || [];
-  usersAll[otherIdx].friends = usersAll[otherIdx].friends || [];
-  if(!usersAll[meIdx].friends.includes(u.id)) usersAll[meIdx].friends.push(u.id);
-  if(!usersAll[otherIdx].friends.includes(me.id)) usersAll[otherIdx].friends.push(me.id);
-  localStorage.setItem('my_users', JSON.stringify(usersAll));
+  // update both users friends arrays
+  users = JSON.parse(localStorage.getItem('my_users')||'[]');
+  const meIdx = users.findIndex(x=>x.id===me.id);
+  const otherIdx = users.findIndex(x=>x.id===u.id);
+  users[meIdx].friends = users[meIdx].friends || [];
+  users[otherIdx].friends = users[otherIdx].friends || [];
+  if(!users[meIdx].friends.includes(u.id)) users[meIdx].friends.push(u.id);
+  if(!users[otherIdx].friends.includes(me.id)) users[otherIdx].friends.push(me.id);
+  localStorage.setItem('my_users', JSON.stringify(users));
   alert('Friend added');
-  users = usersAll;
-  renderPeople(document.getElementById('search').value.toLowerCase());
+  renderAll();
 }
 
-function init(){
-  if(!localStorage.getItem('my_chats')) localStorage.setItem('my_chats','[]');
-  if(!localStorage.getItem('my_users')) localStorage.setItem('my_users','[]');
+/* ====== Search handler ====== */
+searchInput.addEventListener('input', e=>{
+  const f = e.target.value.trim().toLowerCase();
+  renderPeople(f);
+  renderChats(f);
+});
+
+/* ====== Initial render and periodic refresh ====== */
+function renderAll(){
   users = JSON.parse(localStorage.getItem('my_users')||'[]');
   chats = JSON.parse(localStorage.getItem('my_chats')||'[]');
-  renderPeople('');
-  renderChats();
+  groups = JSON.parse(localStorage.getItem('groups')||'[]');
+  renderPeople(searchInput.value.toLowerCase());
+  renderChats(searchInput.value.toLowerCase());
+  // auto open last chat if stored
+  const last = localStorage.getItem('currentChatID') || null;
+  if(last && chats.find(c=>c.id==last)) {
+    // open iframe to chat.html; chat.html will read current_chat from localStorage when opened
+    // But ensure current_chat is set: find chat by id and set current_chat accordingly
+    const c = chats.find(ch=>ch.id==last);
+    if(c){
+      localStorage.setItem('current_chat', JSON.stringify({ type: c.type, id: c.id, with: (c.type==='private'? c.members.find(id=>id!==me.id) : null), groupId: (c.type==='group'? c.id : null), owner: (c.type==='saved'? c.owner : undefined) }));
+      chatFrame.src = 'chat.html';
+      mainTitle.textContent = c.type==='private' ? ('Chat with ' + users.find(u=>u.id===c.members.find(id=>id!==me.id))?.username) : (c.type==='group' ? 'Group: ' + (groups.find(g=>g.id===c.id)?.name || 'Group') : 'Saved Messages');
+    }
+  }
 }
-document.getElementById('search').addEventListener('input', e=> renderPeople(e.target.value.toLowerCase()));
-init();
-setInterval(()=>{ users = JSON.parse(localStorage.getItem('my_users')||'[]'); chats = JSON.parse(localStorage.getItem('my_chats')||'[]'); renderChats(); },2000);
+
+renderAll();
+setInterval(renderAll, 2500); // keep lists updated if storage changed elsewhere
+
+// expose some functions for inline onclicks
+window.openPrivateWithUser = openPrivateWithUser;
+window.addFriendDirect = addFriend;
+window.openChatByChatObjectById = openChatByChatObjectById;
 </script>
+
 </body>
 </html>
