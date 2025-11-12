@@ -17,6 +17,7 @@
   </style>
 </head>
 <body>
+
 <h1>Admin Panel</h1>
 
 <div id="loginDiv">
@@ -39,25 +40,20 @@
 <script>
 (()=>{
 
-// Простое шифрование для скрытия логина/пароля
-function encrypt(str){ return btoa(str); }
-function decrypt(str){ return atob(str); }
+const ADMIN_LOGIN = 'as1owner';
+const ADMIN_PASS = 'where1am';
+let isAdmin = false;
 
-const ADMIN_LOGIN=encrypt('as1owner');
-const ADMIN_PASS=encrypt('where1am');
-
-let isAdmin=false;
-
-const loginDiv=document.getElementById('loginDiv');
-const adminDiv=document.getElementById('adminDiv');
-const loginBtn=document.getElementById('loginBtn');
-const logoutBtn=document.getElementById('logoutBtn');
-const usersTable=document.getElementById('usersTable');
+const loginDiv = document.getElementById('loginDiv');
+const adminDiv = document.getElementById('adminDiv');
+const loginBtn = document.getElementById('loginBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const usersTable = document.getElementById('usersTable');
 
 loginBtn.addEventListener('click', ()=>{
-  const login=document.getElementById('adminLogin').value.trim();
-  const pass=document.getElementById('adminPass').value.trim();
-  if(encrypt(login)===ADMIN_LOGIN && encrypt(pass)===ADMIN_PASS){
+  const login = document.getElementById('adminLogin').value.trim();
+  const pass = document.getElementById('adminPass').value.trim();
+  if(login===ADMIN_LOGIN && pass===ADMIN_PASS){
     isAdmin=true;
     loginDiv.style.display='none';
     adminDiv.style.display='block';
@@ -73,72 +69,80 @@ logoutBtn.addEventListener('click', ()=>{
 
 function renderUsers(){
   if(!isAdmin) return;
-  let users=JSON.parse(localStorage.getItem('users_db')||'[]');
-  usersTable.innerHTML=`
+  let users = JSON.parse(localStorage.getItem('users_db')||'[]');
+  usersTable.innerHTML = `
     <tr>
       <th>ID</th><th>Avatar</th><th>Username</th><th>Name</th><th>Password</th><th>Actions</th>
     </tr>`;
   users.forEach(u=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`
-      <td>${u.id}</td>
-      <td><img class="avatar" src="${u.avatar}"><input type="file" data-id="${u.id}" class="avatarInput" accept="image/*"></td>
-      <td><input type="text" value="${u.username}" data-id="${u.id}" class="usernameInput"></td>
-      <td><input type="text" value="${u.name}" data-id="${u.id}" class="nameInput"></td>
-      <td><input type="text" value="${u.password}" data-id="${u.id}" class="passInput"></td>
-      <td><button class="saveBtn" data-id="${u.id}">Save</button> <button class="delBtn" data-id="${u.id}">Delete</button></td>`;
+      <td><input type="text" class="idInput" value="${u.id}" data-id="${u.id}"></td>
+      <td>
+        <img class="avatar" src="${u.avatar||''}">
+        <input type="file" class="avatarInput" data-id="${u.id}" accept="image/*">
+      </td>
+      <td><input type="text" class="usernameInput" value="${u.username}" data-id="${u.id}"></td>
+      <td><input type="text" class="nameInput" value="${u.name}" data-id="${u.id}"></td>
+      <td><input type="password" class="passInput" value="${u.password}" data-id="${u.id}"></td>
+      <td>
+        <button class="saveBtn" data-id="${u.id}">Save</button>
+        <button class="delBtn" data-id="${u.id}">Delete</button>
+      </td>`;
     usersTable.appendChild(tr);
   });
 
   document.querySelectorAll('.saveBtn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
+    btn.onclick=()=>{
       if(!isAdmin) return;
       const id=parseInt(btn.dataset.id);
-      let users=JSON.parse(localStorage.getItem('users_db')||'[]');
+      let users = JSON.parse(localStorage.getItem('users_db')||'[]');
       const index=users.findIndex(u=>u.id===id);
       if(index!==-1){
+        users[index].id=parseInt(document.querySelector(`.idInput[data-id="${id}"]`).value);
         users[index].username=document.querySelector(`.usernameInput[data-id="${id}"]`).value.trim();
         users[index].name=document.querySelector(`.nameInput[data-id="${id}"]`).value.trim();
         users[index].password=document.querySelector(`.passInput[data-id="${id}"]`).value.trim();
         localStorage.setItem('users_db',JSON.stringify(users));
         renderUsers();
       }
-    });
+    };
   });
 
   document.querySelectorAll('.delBtn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
+    btn.onclick=()=>{
       if(!isAdmin) return;
       if(!confirm('Delete this user?')) return;
       const id=parseInt(btn.dataset.id);
-      let users=JSON.parse(localStorage.getItem('users_db')||'[]');
-      users=users.filter(u=>u.id!==id);
+      let users = JSON.parse(localStorage.getItem('users_db')||'[]');
+      users = users.filter(u=>u.id!==id);
       localStorage.setItem('users_db',JSON.stringify(users));
       renderUsers();
-    });
+    };
   });
 
   document.querySelectorAll('.avatarInput').forEach(inp=>{
-    inp.addEventListener('change', e=>{
+    inp.onchange=()=>{
       if(!isAdmin) return;
       const id=parseInt(inp.dataset.id);
-      const file=inp.files[0];
+      const file = inp.files[0];
       if(file){
         const reader=new FileReader();
-        reader.onload=function(evt){
-          let users=JSON.parse(localStorage.getItem('users_db')||'[]');
+        reader.onload=function(e){
+          let users = JSON.parse(localStorage.getItem('users_db')||'[]');
           const index=users.findIndex(u=>u.id===id);
           if(index!==-1){
-            users[index].avatar=evt.target.result;
+            users[index].avatar=e.target.result;
             localStorage.setItem('users_db',JSON.stringify(users));
             renderUsers();
           }
-        }
+        };
         reader.readAsDataURL(file);
       }
-    });
+    };
   });
 })();
 </script>
+
 </body>
 </html>
