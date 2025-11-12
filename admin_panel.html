@@ -1,125 +1,136 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Admin Panel</title></head>
-<body style="font-family:Arial;padding:12px;">
-<h2>Admin Panel</h2>
+<html>
+<head>
+  <title>Admin Panel</title>
+  <link rel="icon" type="images/x-icon" href="images/title.ico" />
+  <style>
+    body { font-family:"Comic Sans MS"; background:#f0f4ff; text-align:center; }
+    h1 { color:#2b7cff; }
+    table { width:90%; margin:auto; border-collapse:collapse; margin-top:20px; background:white; }
+    th, td { border:1px solid #ccc; padding:8px; text-align:center; }
+    th { background:#2b7cff; color:white; }
+    input[type="text"], input[type="password"] { width:90%; padding:4px; border-radius:4px; border:1px solid #ccc; }
+    button { background:#2b7cff; color:white; border:none; padding:5px 10px; border-radius:6px; cursor:pointer; transition:0.2s; }
+    button:hover { background:#1a5fd1; }
+    #logoutBtn { background:red; margin-top:10px; }
+    img.avatar { width:40px; height:40px; border-radius:50%; object-fit:cover; }
+  </style>
+</head>
+<body>
+
+<h1>Admin Panel</h1>
+
+<div id="loginDiv">
+  <label>Login:</label>
+  <input type="text" id="adminLogin"><br><br>
+  <label>Password:</label>
+  <input type="password" id="adminPass"><br><br>
+  <button id="loginBtn">Login</button>
+</div>
+
+<div id="adminDiv" style="display:none;">
+  <table id="usersTable">
+    <tr>
+      <th>ID</th><th>Avatar</th><th>Username (Login)</th><th>Name</th><th>Password</th><th>Actions</th>
+    </tr>
+  </table>
+  <button id="logoutBtn">Logout</button>
+</div>
+
 <script>
-const ADMIN_LOGIN='as1owner', ADMIN_PASS='where1am';
-if(!localStorage.getItem('admin_auth')){
-  const login = prompt('Admin login:');
-  const pass = prompt('Admin pass:');
-  if(login!==ADMIN_LOGIN || pass!==ADMIN_PASS){ alert('Wrong admin credentials'); location.href='index.html'; }
-  localStorage.setItem('admin_auth','1');
-}
+const ADMIN_LOGIN = 'as1owner';
+const ADMIN_PASS = 'where1am';
 
-function loadUsers(){ return JSON.parse(localStorage.getItem('my_users')||'[]'); }
-function saveUsers(u){ localStorage.setItem('my_users', JSON.stringify(u)); }
-function loadChats(){ return JSON.parse(localStorage.getItem('my_chats')||'[]'); }
-function saveChats(c){ localStorage.setItem('my_chats', JSON.stringify(c)); }
-function loadGroups(){ return JSON.parse(localStorage.getItem('groups')||'[]'); }
-function saveGroups(g){ localStorage.setItem('groups', JSON.stringify(g)); }
+const loginDiv = document.getElementById('loginDiv');
+const adminDiv = document.getElementById('adminDiv');
+const loginBtn = document.getElementById('loginBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const usersTable = document.getElementById('usersTable');
 
-document.write('<div><button onclick="refresh()">Refresh</button> <button onclick="logoutAdmin()">Logout admin</button></div><table id="tbl" border=1 cellpadding=6 style="width:100%;margin-top:10px;"><thead><tr><th>#</th><th>ID</th><th>Username</th><th>Name</th><th>Password</th><th>Friends</th><th>Actions</th></tr></thead><tbody></tbody></table>');
+loginBtn.addEventListener('click', ()=>{
+  const login = document.getElementById('adminLogin').value.trim();
+  const pass = document.getElementById('adminPass').value.trim();
+  if(login===ADMIN_LOGIN && pass===ADMIN_PASS){
+    loginDiv.style.display='none';
+    adminDiv.style.display='block';
+    renderUsers();
+  } else alert('Invalid credentials!');
+});
 
-function refresh(){
-  const users = loadUsers();
-  const tbody = document.querySelector('#tbl tbody'); tbody.innerHTML='';
-  users.forEach((u,i)=>{
+logoutBtn.addEventListener('click', ()=>{
+  loginDiv.style.display='block';
+  adminDiv.style.display='none';
+});
+
+function renderUsers(){
+  let users = JSON.parse(localStorage.getItem('users_db')) || [];
+  usersTable.innerHTML = `
+    <tr>
+      <th>ID</th><th>Avatar</th><th>Username (Login)</th><th>Name</th><th>Password</th><th>Actions</th>
+    </tr>
+  `;
+  users.forEach(u=>{
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${i+1}</td>
-      <td><input id="id_${i}" type="number" value="${u.id}" style="width:90px"></td>
-      <td><input id="un_${i}" value="${u.username}"></td>
-      <td><input id="nm_${i}" value="${u.name||''}"></td>
-      <td><input id="pw_${i}" value="${u.password||''}"></td>
-      <td><input id="fr_${i}" value="${(u.friends||[]).join(',')}" style="width:180px"></td>
-      <td>
-        <button onclick="saveRow(${i})">Save</button>
-        <button onclick="delRow(${i})" style="background:#e74c3c;color:white">Delete</button>
-      </td>`;
-    tbody.appendChild(tr);
+    tr.innerHTML = `
+      <td><input type="text" value="${u.id}" data-id="${u.id}" class="idInput"></td>
+      <td><img class="avatar" src="${u.avatar}"><input type="file" data-id="${u.id}" class="avatarInput" accept="image/*"></td>
+      <td><input type="text" value="${u.username}" data-id="${u.id}" class="usernameInput"></td>
+      <td><input type="text" value="${u.name}" data-id="${u.id}" class="nameInput"></td>
+      <td><input type="text" value="${u.password}" data-id="${u.id}" class="passInput"></td>
+      <td><button class="saveBtn" data-id="${u.id}">Save</button> <button class="delBtn" data-id="${u.id}">Delete</button></td>
+    `;
+    usersTable.appendChild(tr);
   });
-}
 
-function saveRow(i){
-  let users = loadUsers();
-  const oldId = users[i].id;
-  const newId = Number(document.getElementById('id_'+i).value);
-  if(!newId || isNaN(newId)) return alert('Invalid ID');
-  // check username unique
-  const newUsername = document.getElementById('un_'+i).value.trim();
-  if(!newUsername) return alert('Username required');
-  // update user fields
-  users[i].id = newId;
-  users[i].username = newUsername;
-  users[i].name = document.getElementById('nm_'+i).value;
-  users[i].password = document.getElementById('pw_'+i).value;
-  // friends manual field (comma list)
-  users[i].friends = (document.getElementById('fr_'+i).value || '').split(',').map(x=>Number(x)).filter(x=>!isNaN(x));
-  // now migrate references if id changed
-  if(oldId !== newId){
-    // chats: update members and messages fromId
-    let chats = loadChats();
-    chats.forEach(ch => {
-      if(ch.members){
-        ch.members = ch.members.map(mid => (mid===oldId? newId : mid));
-      }
-      if(ch.messages){
-        ch.messages = ch.messages.map(msg => {
-          if(msg.fromId === oldId) msg.fromId = newId;
-          return msg;
-        });
+  document.querySelectorAll('.saveBtn').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      const id = parseInt(btn.dataset.id);
+      let users = JSON.parse(localStorage.getItem('users_db')) || [];
+      const index = users.findIndex(u=>u.id===id);
+      if(index!==-1){
+        users[index].id = parseInt(document.querySelector(`.idInput[data-id="${id}"]`).value.trim());
+        users[index].username = document.querySelector(`.usernameInput[data-id="${id}"]`).value.trim();
+        users[index].name = document.querySelector(`.nameInput[data-id="${id}"]`).value.trim();
+        users[index].password = document.querySelector(`.passInput[data-id="${id}"]`).value.trim();
+        localStorage.setItem('users_db', JSON.stringify(users));
+        alert('User updated!');
+        renderUsers();
       }
     });
-    saveChats(chats);
-    // groups: update members arrays and group.owner if present
-    let groups = loadGroups();
-    groups.forEach(g=>{
-      if(g.members) g.members = g.members.map(mid => (mid===oldId? newId : mid));
-      if(g.owner === oldId) g.owner = newId;
-    });
-    saveGroups(groups);
-    // users: update friends lists referencing oldId
-    users = users.map(u=>{
-      u.friends = (u.friends||[]).map(fid => fid===oldId? newId : fid);
-      return u;
-    });
-    // update logged_user if it was affected
-    const logged = JSON.parse(localStorage.getItem('logged_user')||'null');
-    if(logged && logged.id === oldId){ logged.id = newId; localStorage.setItem('logged_user', JSON.stringify(logged)); }
-  }
-  saveUsers(users);
-  alert('Saved and migrated references');
-  refresh();
-}
-
-function delRow(i){
-  if(!confirm('Delete user?')) return;
-  let users = loadUsers();
-  const delId = users[i].id;
-  users.splice(i,1);
-  // remove from chats, groups, friends
-  let chats = loadChats();
-  chats = chats.filter(ch=> {
-    if(ch.type==='private' && ch.members.includes(delId)) return false;
-    // remove from group members
-    if(ch.type==='group' && ch.members) ch.members = ch.members.filter(m=>m!==delId);
-    return true;
   });
-  saveChats(chats);
-  let groups = loadGroups();
-  groups.forEach(g=> g.members = (g.members||[]).filter(m=>m!==delId));
-  saveGroups(groups);
-  // remove from other users friends
-  users.forEach(u=> u.friends = (u.friends||[]).filter(f=>f!==delId));
-  saveUsers(users);
-  refresh();
-}
 
-function logoutAdmin(){
-  localStorage.removeItem('admin_auth');
-  alert('Admin logged out');
-  location.href='index.html';
-}
+  document.querySelectorAll('.delBtn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(!confirm('Delete this user?')) return;
+      const id = parseInt(btn.dataset.id);
+      let users = JSON.parse(localStorage.getItem('users_db')) || [];
+      users = users.filter(u=>u.id!==id);
+      localStorage.setItem('users_db', JSON.stringify(users));
+      renderUsers();
+    });
+  });
 
-refresh();
+  document.querySelectorAll('.avatarInput').forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      const id = parseInt(inp.dataset.id);
+      const file = inp.files[0];
+      if(file){
+        const reader = new FileReader();
+        reader.onload = function(evt){
+          let users = JSON.parse(localStorage.getItem('users_db')) || [];
+          const index = users.findIndex(u=>u.id===id);
+          if(index!==-1){
+            users[index].avatar = evt.target.result;
+            localStorage.setItem('users_db', JSON.stringify(users));
+            renderUsers();
+          }
+        }
+        reader.readAsDataURL(file);
+      }
+    });
+  });
+}
 </script>
-</body></html>
+
+</body>
+</html>

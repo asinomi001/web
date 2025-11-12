@@ -4,66 +4,19 @@
 <title>Asinomi WebSite</title>
 <link rel="icon" type="images/x-icon" href="images/title.ico" />
 <style>
+/* Основной стиль страницы */
+body { font-family: "Comic Sans MS", Arial, sans-serif; background: #f0f4ff; text-align: center; }
+h1 { color: #2b7cff; }
+button { margin: 5px; padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; transition: 0.2s; }
+button:hover { background: #1a5fd1; color: white; }
+
 /* Аватарка пользователя в правом верхнем углу */
-.avatar-container {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  z-index: 1000;
-}
-
-#userAvatar {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  object-fit: cover;
-  cursor: pointer;
-  border: 2px solid #2b7cff;
-  display: none;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-#userAvatar:hover {
-  transform: scale(1.2);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-}
+.avatar-container { position: fixed; top: 10px; right: 10px; z-index: 1000; }
+#userAvatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #2b7cff; cursor: pointer; display: none; transition: transform 0.2s; }
+#userAvatar:hover { transform: scale(1.2); box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
 
 /* Tooltip */
-#avatarTooltip {
-  position: absolute;
-  bottom: 60px;
-  right: 0;
-  background: rgba(0,0,0,0.8);
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-  white-space: nowrap;
-  display: none;
-  pointer-events: none;
-}
-
-/* Кнопка сообщений внизу */
-.messages-btn {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background: #2b7cff;
-  color: white;
-  border: none;
-  border-radius: 50px;
-  padding: 15px 25px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-  transition: background 0.3s, transform 0.2s;
-}
-
-.messages-btn:hover {
-  background: #1f5fd1;
-  transform: scale(1.1);
-}
+#avatarTooltip { position: absolute; bottom: 60px; right: 0; background: rgba(0,0,0,0.8); color: #fff; padding: 4px 8px; border-radius: 6px; font-size: 12px; white-space: nowrap; display: none; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -77,53 +30,50 @@
 <!-- Основное содержимое -->
 <font face="comic sans ms"><center><h1>Hi, I'm Asinomi♥🏡</h1></center></font>
 <center><button>TAP!</button></center>
-<center><a href="images.html" ><button>My Images🖼🖼</button></a></center>
-<center><a href="about me.html" ><button>About ME!(dev)</button></a></center>
-<div class="div1">
-<center><a href="RegPAge.html" ><button>REGISTER</button></a></center>
-<center><a href="rules.html" ><button class="rules" >Read <strong>RULES📖</strong></button></a></center>
+<center><a href="images.html"><button>My Images🖼🖼</button></a></center>
+<center><a href="about me.html"><button>About ME!(dev)</button></a></center>
+
+<!-- Кнопки регистрации и логина -->
+<div id="buttonsContainer">
+  <center><a href="RegPage.html"><button id="regBtn">REGISTER</button></a></center>
+  <center><a href="login.html"><button id="loginBtn">LOG IN</button></a></center>
 </div>
+
+<center><a href="rules.html"><button class="rules">Read <strong>RULES📖</strong></button></a></center>
 <div class="rules">
 <img src="images/asinomi dev.png" alt="" width="500" height="500" title="Dev Art" />
 </div>
 <div class="secret">
-<span style="color: white">find secret</span></font>
-</div>
+<span style="color: white">find secret</span></div>
 
 <!-- Кнопка сообщений -->
-<button class="messages-btn" id="messagesBtn">💬 Messages</button>
+<button id="messagesBtn" style="background:#2b7cff; color:white; border:none; border-radius:50px; padding:15px 25px; position:fixed; bottom:20px; right:20px;">💬 Messages</button>
 
 <script>
 // Загружаем данные залогиненного пользователя
 const currentUser = JSON.parse(localStorage.getItem('logged_user'));
 const avatarImg = document.getElementById('userAvatar');
 const tooltip = document.getElementById('avatarTooltip');
+const buttonsContainer = document.getElementById('buttonsContainer');
 const messagesBtn = document.getElementById('messagesBtn');
 
-// Если пользователь вошёл — показать аватар
-if (currentUser && currentUser.avatar) {
+// Отображение аватара и скрытие кнопок если пользователь залогинен
+if(currentUser && currentUser.avatar){
   avatarImg.src = currentUser.avatar;
   avatarImg.style.display = 'block';
   tooltip.textContent = currentUser.username || currentUser.login || 'User';
+  buttonsContainer.style.display = 'none';
 
-  // Клик по аватарке → переход в аккаунт
-  avatarImg.addEventListener('click', () => {
-    window.location.href = 'account.html';
-  });
-
-  // Tooltip при наведении
-  avatarImg.addEventListener('mouseenter', () => {
-    tooltip.style.display = 'block';
-  });
-  avatarImg.addEventListener('mouseleave', () => {
-    tooltip.style.display = 'none';
-  });
+  avatarImg.addEventListener('click', ()=> window.location.href='account.html');
+  avatarImg.addEventListener('mouseenter', ()=> tooltip.style.display='block');
+  avatarImg.addEventListener('mouseleave', ()=> tooltip.style.display='none');
+} else {
+  avatarImg.style.display = 'none';
+  buttonsContainer.style.display = 'block';
 }
 
-// Клик по кнопке сообщений → переход в friends.html
-messagesBtn.addEventListener('click', () => {
-  window.location.href = 'friends.html';
-});
+// Переход к друзьям и чатам
+messagesBtn.addEventListener('click', ()=> window.location.href='friends.html');
 </script>
 
 </body>

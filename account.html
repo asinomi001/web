@@ -4,47 +4,106 @@
   <title>My Account</title>
   <link rel="icon" type="images/x-icon" href="images/title.ico" />
   <style>
-    body { font-family: "Comic Sans MS", Arial, sans-serif; text-align: center; background: #f0f4ff; }
-    h1 { color: #2b7cff; }
-    button { background: #2b7cff; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin: 5px; transition: background 0.2s; }
-    button:hover { background: #1a5fd1; }
-    #userAvatar { width:100px; height:100px; border-radius:50%; border:2px solid #2b7cff; object-fit:cover; margin: 10px 0; }
-    .account-info { font-size: 18px; margin: 5px 0; }
+    body { font-family:"Comic Sans MS"; background:#f0f4ff; text-align:center; }
+    h1 { color:#2b7cff; }
+    .container { margin:20px auto; max-width:400px; background:white; padding:20px; border-radius:8px; text-align:left; }
+    label { display:block; margin:10px 0 5px; }
+    input[type="text"], input[type="file"] { width:100%; padding:8px; border-radius:6px; border:1px solid #ccc; }
+    #avatarPreview { width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid #2b7cff; display:block; margin:10px auto; }
+    button { background:#2b7cff; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; margin-top:10px; transition:0.2s; display:block; width:100%; }
+    button:hover { background:#1a5fd1; }
   </style>
 </head>
 <body>
 
 <h1>My Account</h1>
 
-<div id="accountInfo">
-  <img id="userAvatar" src="" alt="Avatar">
-  <p class="account-info"><strong>ID:</strong> <span id="userId"></span></p>
-  <p class="account-info"><strong>Username (Login):</strong> <span id="userLogin"></span></p>
-  <p class="account-info"><strong>Name:</strong> <span id="userName"></span></p>
-  <p class="account-info"><strong>Password:</strong> <span id="userPassword"></span></p>
+<div class="container">
+  <label>ID</label>
+  <input type="text" id="userID" disabled>
+
+  <label>Username (Login)</label>
+  <input type="text" id="username">
+
+  <label>Name</label>
+  <input type="text" id="name">
+
+  <label>Password</label>
+  <input type="text" id="password" disabled>
+
+  <label>Avatar</label>
+  <img id="avatarPreview" src="">
+  <input type="file" id="changeAvatar" accept="image/*">
+
+  <button id="saveBtn">Save Changes</button>
+  <button id="logoutBtn" style="background:red;">Logout</button>
 </div>
 
-<button id="logoutBtn">Logout</button>
-
 <script>
-// Получаем залогиненного пользователя
-const currentUser = JSON.parse(localStorage.getItem('logged_user'));
+// Загрузка данных текущего пользователя
+let currentUser = JSON.parse(localStorage.getItem('logged_user'));
+if(!currentUser){ window.location.href='login.html'; }
 
-// Если пользователь не залогинен → возвращаем на index.html
-if(!currentUser){
-  window.location.href = 'index.html';
-} else {
-  document.getElementById('userId').textContent = currentUser.id || '-';
-  document.getElementById('userLogin').textContent = currentUser.login || '-';
-  document.getElementById('userName').textContent = currentUser.name || '-';
-  document.getElementById('userPassword').textContent = currentUser.password || '-';
-  if(currentUser.avatar) document.getElementById('userAvatar').src = currentUser.avatar;
-}
+const userID = document.getElementById('userID');
+const username = document.getElementById('username');
+const nameInput = document.getElementById('name');
+const password = document.getElementById('password');
+const avatarPreview = document.getElementById('avatarPreview');
+const changeAvatar = document.getElementById('changeAvatar');
 
-// Кнопка выхода
-document.getElementById('logoutBtn').addEventListener('click', () => {
-  localStorage.removeItem('logged_user'); // удаляем залогиненного пользователя
-  window.location.href = 'index.html'; // возвращаем на главную
+userID.value = currentUser.id;
+username.value = currentUser.username;
+nameInput.value = currentUser.name;
+password.value = currentUser.password;
+avatarPreview.src = currentUser.avatar;
+
+// Изменение аватара
+changeAvatar.addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(file){
+    const reader = new FileReader();
+    reader.onload = function(evt){
+      avatarPreview.src = evt.target.result;
+      currentUser.avatar = evt.target.result;
+      localStorage.setItem('logged_user', JSON.stringify(currentUser));
+      let users = JSON.parse(localStorage.getItem('users_db')) || [];
+      const index = users.findIndex(u=>u.id===currentUser.id);
+      if(index!==-1){ users[index].avatar = evt.target.result; localStorage.setItem('users_db', JSON.stringify(users)); }
+    }
+    reader.readAsDataURL(file);
+  }
+});
+
+// Сохранение изменений
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  const newUsername = username.value.trim();
+  const newName = nameInput.value.trim();
+
+  if(!newUsername || !newName) return alert('Fields cannot be empty!');
+
+  // Проверка уникальности username
+  let users = JSON.parse(localStorage.getItem('users_db')) || [];
+  if(users.find(u=>u.login===newUsername && u.id!==currentUser.id)) return alert('Username already exists!');
+
+  currentUser.username = newUsername;
+  currentUser.name = newName;
+
+  // Обновляем в базе
+  const index = users.findIndex(u=>u.id===currentUser.id);
+  if(index!==-1){
+    users[index].username = newUsername;
+    users[index].name = newName;
+    localStorage.setItem('users_db', JSON.stringify(users));
+  }
+
+  localStorage.setItem('logged_user', JSON.stringify(currentUser));
+  alert('Changes saved!');
+});
+
+// Logout
+document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  localStorage.removeItem('logged_user');
+  window.location.href='index.html';
 });
 </script>
 

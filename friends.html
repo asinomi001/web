@@ -4,68 +4,147 @@
   <title>Friends & Chats</title>
   <link rel="icon" type="images/x-icon" href="images/title.ico" />
   <style>
-    body { font-family: "Comic Sans MS", Arial, sans-serif; background: #f0f4ff; text-align: center; }
-    h1 { color: #2b7cff; }
-    .friend-list, .chat-list { margin: 20px auto; max-width: 600px; text-align: left; }
-    .friend, .chat { padding: 10px; margin: 5px 0; background: white; border-radius: 6px; cursor: pointer; display: flex; align-items: center; }
-    .friend img, .chat img { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; object-fit: cover; }
-    .online { color: green; font-weight: bold; margin-left: auto; }
-    button { background: #2b7cff; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; margin: 5px; transition: 0.2s; }
-    button:hover { background: #1a5fd1; }
+    body { font-family:"Comic Sans MS"; background:#f0f4ff; display:flex; height:100vh; margin:0; }
+    #sidebar { width:300px; background:white; padding:10px; overflow-y:auto; border-right:1px solid #ccc; }
+    #chatContainer { flex:1; display:flex; flex-direction:column; background:#e0ebff; }
+    #chatMessages { flex:1; padding:10px; overflow-y:auto; }
+    #chatInput { display:flex; padding:10px; background:white; }
+    #chatInput input { flex:1; padding:8px; border-radius:6px; border:1px solid #ccc; }
+    #chatInput button { margin-left:5px; background:#2b7cff; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; }
+    #chatInput button:hover { background:#1a5fd1; }
+    .friend, .group, .channel { padding:8px; margin:5px 0; border-radius:6px; cursor:pointer; border:1px solid transparent; display:flex; align-items:center; }
+    .friend:hover, .group:hover, .channel:hover { background:#d0e4ff; border-color:#2b7cff; }
+    .avatar { width:40px; height:40px; border-radius:50%; object-fit:cover; margin-right:10px; }
+    .online { width:10px; height:10px; background:green; border-radius:50%; margin-left:auto; }
+    .offline { width:10px; height:10px; background:red; border-radius:50%; margin-left:auto; }
+    h2 { margin-top:0; }
   </style>
 </head>
 <body>
 
-<h1>Friends & Chats</h1>
-<button id="backBtn">⬅ Back to Main</button>
+<div id="sidebar">
+  <h2>Friends</h2>
+  <div id="friendsList"></div>
+  <button id="addFriendBtn">Add Friend</button>
+  <h2>Groups & Channels</h2>
+  <div id="groupsList"></div>
+  <button id="createGroupBtn">Create Group/Channel</button>
+</div>
 
-<h2>Friends</h2>
-<div class="friend-list" id="friendList"></div>
-
-<h2>Chats</h2>
-<div class="chat-list" id="chatList"></div>
+<div id="chatContainer">
+  <div id="chatMessages"></div>
+  <div id="chatInput">
+    <input type="text" id="messageText" placeholder="Type a message...">
+    <button id="sendBtn">Send</button>
+  </div>
+</div>
 
 <script>
 // Проверка залогиненного пользователя
-const currentUser = JSON.parse(localStorage.getItem('logged_user'));
-if(!currentUser){ window.location.href = 'index.html'; }
+let currentUser = JSON.parse(localStorage.getItem('logged_user'));
+if(!currentUser){ window.location.href='login.html'; }
 
-// Данные друзей (пример)
-const users = JSON.parse(localStorage.getItem('users_db')) || []; // Все пользователи
-const friends = users.filter(u => u.id !== currentUser.id); // Все кроме себя
+let users = JSON.parse(localStorage.getItem('users_db')) || [];
+let groups = JSON.parse(localStorage.getItem('groups_db')) || [];
+let chats = JSON.parse(localStorage.getItem('chats_db')) || []; // {chatId, members:[id], messages:[{from,text,date,type}]}
 
-const friendList = document.getElementById('friendList');
-friends.forEach(f => {
-  const div = document.createElement('div');
-  div.classList.add('friend');
-  div.innerHTML = `<img src="${f.avatar || 'images/default_avatar.png'}" alt="avatar">
-                   <span>${f.username || f.login}</span>
-                   <span class="online">●</span>`;
-  div.addEventListener('click', () => {
-    localStorage.setItem('active_chat', f.id);
-    window.location.href = 'chat.html';
+const friendsList = document.getElementById('friendsList');
+const groupsList = document.getElementById('groupsList');
+const chatMessages = document.getElementById('chatMessages');
+const messageText = document.getElementById('messageText');
+const sendBtn = document.getElementById('sendBtn');
+
+let currentChatId = null;
+
+// --- Friends ---
+function renderFriends(){
+  friendsList.innerHTML = '';
+  users.forEach(u=>{
+    if(u.id !== currentUser.id){
+      const div = document.createElement('div');
+      div.className='friend';
+      div.innerHTML = `<img class="avatar" src="${u.avatar}"> ${u.username} <span class="${Math.random()>0.5?'online':'offline'}"></span>`;
+      div.addEventListener('click', ()=>openChat([currentUser.id,u.id]));
+      friendsList.appendChild(div);
+    }
   });
-  friendList.appendChild(div);
-});
+}
 
-// Список чатов (для примера, будем брать тех же друзей)
-const chatList = document.getElementById('chatList');
-friends.forEach(c => {
-  const div = document.createElement('div');
-  div.classList.add('chat');
-  div.innerHTML = `<img src="${c.avatar || 'images/default_avatar.png'}" alt="avatar">
-                   <span>${c.username || c.login}</span>`;
-  div.addEventListener('click', () => {
-    localStorage.setItem('active_chat', c.id);
-    window.location.href = 'chat.html';
+// --- Groups/Channels ---
+function renderGroups(){
+  groupsList.innerHTML = '';
+  groups.forEach(g=>{
+    const div = document.createElement('div');
+    div.className = g.type;
+    div.innerHTML = `<img class="avatar" src="${g.avatar}"> ${g.name}`;
+    div.addEventListener('click', ()=>openChat(g.members));
+    groupsList.appendChild(div);
   });
-  chatList.appendChild(div);
+}
+
+// --- Open Chat ---
+function openChat(members){
+  // Создаём или получаем чатId по участникам
+  members.sort((a,b)=>a-b);
+  let chat = chats.find(c=>JSON.stringify(c.members)==JSON.stringify(members));
+  if(!chat){
+    chat = {chatId: Date.now(), members, messages:[]};
+    chats.push(chat);
+    localStorage.setItem('chats_db', JSON.stringify(chats));
+  }
+  currentChatId = chat.chatId;
+  renderMessages();
+}
+
+// --- Render Messages ---
+function renderMessages(){
+  chatMessages.innerHTML='';
+  const chat = chats.find(c=>c.chatId===currentChatId);
+  if(!chat) return;
+  chat.messages.forEach(msg=>{
+    const div = document.createElement('div');
+    div.innerHTML = `<b>${users.find(u=>u.id===msg.from)?.username||'You'}:</b> ${msg.text}`;
+    chatMessages.appendChild(div);
+  });
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// --- Send Message ---
+sendBtn.addEventListener('click', ()=>{
+  if(!currentChatId) return alert('Select a chat first!');
+  const text = messageText.value.trim();
+  if(!text) return;
+  const chat = chats.find(c=>c.chatId===currentChatId);
+  chat.messages.push({from:currentUser.id,text,date:Date.now(),type:'text'});
+  localStorage.setItem('chats_db', JSON.stringify(chats));
+  messageText.value='';
+  renderMessages();
 });
 
-// Кнопка назад
-document.getElementById('backBtn').addEventListener('click', () => {
-  window.location.href = 'index.html';
+// --- Add Friend ---
+document.getElementById('addFriendBtn').addEventListener('click', ()=>{
+  const uname = prompt('Enter username to add as friend:');
+  const friend = users.find(u=>u.username===uname);
+  if(friend && friend.id!==currentUser.id){
+    alert(`Friend ${uname} added!`);
+    openChat([currentUser.id,friend.id]);
+  } else alert('User not found!');
 });
+
+// --- Create Group/Channel ---
+document.getElementById('createGroupBtn').addEventListener('click', ()=>{
+  const name = prompt('Group/Channel name:');
+  const type = prompt('Type "group" or "channel":','group');
+  if(!name) return alert('Name required!');
+  const g = {id:Date.now(), name, type, avatar:'images/avatar1.png', members:[currentUser.id]};
+  groups.push(g);
+  localStorage.setItem('groups_db', JSON.stringify(groups));
+  renderGroups();
+});
+
+// --- Initial render ---
+renderFriends();
+renderGroups();
 </script>
 
 </body>

@@ -1,48 +1,54 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Log In</title>
-<link rel="icon" type="images/x-icon" href="images/title.ico" />
-<style>
-  body { font-family: Arial, sans-serif; background: #f0f4ff; text-align: center; }
-  h1 { color: #2b7cff; }
-  input { display: block; margin: 10px auto; padding: 8px; width: 200px; border-radius: 6px; border: 1px solid #ccc; }
-  button { background: #2b7cff; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
-  button:hover { background: #1a5fd1; }
-</style>
+  <title>Login</title>
+  <link rel="icon" type="images/x-icon" href="images/title.ico" />
+  <style>
+    body { font-family:"Comic Sans MS"; background:#f0f4ff; text-align:center; }
+    h1 { color:#2b7cff; }
+    form { margin: 20px auto; max-width: 400px; text-align:left; background:white; padding:20px; border-radius:8px; }
+    label { display:block; margin:10px 0 5px; }
+    input[type="text"], input[type="password"] { width:100%; padding:8px; border-radius:6px; border:1px solid #ccc; }
+    button { background:#2b7cff; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; margin-top:10px; transition:0.2s; }
+    button:hover { background:#1a5fd1; }
+  </style>
 </head>
 <body>
-<h1>Log In</h1>
-<input type="text" id="username" placeholder="Username">
-<input type="password" id="password" placeholder="Password">
-<button id="loginBtn">Log In</button>
+
+<h1>LOG IN TO YOUR ACCOUNT</h1>
+
+<form id="loginForm">
+  <label>Username</label>
+  <input type="text" id="login" required>
+
+  <label>Password</label>
+  <input type="password" id="password" required>
+
+  <button type="submit">Log In</button>
+</form>
 
 <script>
-// Получение данных пользователей
-const users = JSON.parse(localStorage.getItem('users') || '[]');
+// Проверка, если пользователь уже залогинен
+const loggedUser = JSON.parse(localStorage.getItem('logged_user'));
+if(loggedUser){ window.location.href='account.html'; }
 
-// Проверка, если пользователь уже вошёл — редирект на account.html
-if(localStorage.getItem('logged_user')){
-  window.location.href = 'account.html';
-}
-
-document.getElementById('loginBtn').addEventListener('click', () => {
-  const username = document.getElementById('username').value.trim();
+document.getElementById('loginForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const login = document.getElementById('login').value.trim();
   const password = document.getElementById('password').value.trim();
 
-  const user = users.find(u => u.username === username && u.password === password);
+  let users = JSON.parse(localStorage.getItem('users_db')) || [];
+  const user = users.find(u=>u.login===login && u.password===password);
 
-  if(!user){
-    alert('Invalid username or password!');
-    return;
+  if(user){
+    localStorage.setItem('logged_user', JSON.stringify(user));
+    alert('Successfully logged in!');
+    window.location.href='account.html';
+  } else {
+    alert('Incorrect username or password!');
   }
-
-  localStorage.setItem('logged_user', JSON.stringify(user));
-  alert('Logged in successfully!');
-  window.location.href = 'account.html';
 });
 </script>
+
 </body>
 </html>

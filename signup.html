@@ -1,93 +1,106 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sign Up</title>
-<link rel="icon" type="images/x-icon" href="images/title.ico" />
-<style>
-  body { font-family: Arial, sans-serif; background: #f0f4ff; text-align: center; }
-  h1 { color: #2b7cff; }
-  .avatar-option { width: 80px; height: 80px; border-radius: 50%; margin: 10px; border: 2px solid transparent; cursor: pointer; transition: transform 0.2s, border 0.2s; }
-  .avatar-option.selected { border: 2px solid #2b7cff; transform: scale(1.1); }
-  #preview { width: 100px; height: 100px; border-radius: 50%; margin: 10px; border: 2px solid #2b7cff; display: block; }
-  input { display: block; margin: 10px auto; padding: 8px; width: 200px; border-radius: 6px; border: 1px solid #ccc; }
-  button { background: #2b7cff; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
-  button:hover { background: #1a5fd1; }
-</style>
+  <title>Sign Up</title>
+  <link rel="icon" type="images/x-icon" href="images/title.ico" />
+  <style>
+    body { font-family:"Comic Sans MS"; background:#f0f4ff; text-align:center; }
+    h1 { color:#2b7cff; }
+    form { margin: 20px auto; max-width: 400px; text-align:left; background:white; padding:20px; border-radius:8px; }
+    label { display:block; margin:10px 0 5px; }
+    input[type="text"], input[type="password"], input[type="file"] { width:100%; padding:8px; border-radius:6px; border:1px solid #ccc; }
+    .avatars { display:flex; justify-content:center; flex-wrap:wrap; margin:10px 0; }
+    .avatars img { width:50px; height:50px; margin:5px; border-radius:50%; border:2px solid transparent; cursor:pointer; object-fit:cover; transition:0.2s; }
+    .avatars img.selected { border-color:#2b7cff; transform: scale(1.2); }
+    button { background:#2b7cff; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; margin-top:10px; transition:0.2s; }
+    button:hover { background:#1a5fd1; }
+    #preview { display:block; margin:10px auto; width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid #2b7cff; }
+  </style>
 </head>
 <body>
-<h1>Sign Up</h1>
-<input type="text" id="username" placeholder="Username">
-<input type="text" id="name" placeholder="Name">
-<input type="password" id="password" placeholder="Password">
 
-<h3>Choose your avatar:</h3>
-<div id="avatars">
-  <img src="avatars/avatar1.png" class="avatar-option">
-  <img src="avatars/avatar2.png" class="avatar-option">
-  <img src="avatars/avatar3.png" class="avatar-option">
-</div>
+<h1>SIGN UP (Create your account)</h1>
 
-<h3>Or upload your own:</h3>
-<input type="file" id="customAvatar" accept="image/*">
-<img id="preview" src="" alt="Avatar Preview">
+<form id="signupForm">
+  <label>Username (login)</label>
+  <input type="text" id="login" required>
 
-<button id="signupBtn">Register</button>
+  <label>Name</label>
+  <input type="text" id="name" required>
+
+  <label>Password</label>
+  <input type="password" id="password" required>
+
+  <label>Choose Avatar</label>
+  <div class="avatars" id="avatarOptions">
+    <img src="images/avatar1.png" data-src="images/avatar1.png">
+    <img src="images/avatar2.png" data-src="images/avatar2.png">
+    <img src="images/avatar3.png" data-src="images/avatar3.png">
+    <img src="images/avatar4.png" data-src="images/avatar4.png">
+  </div>
+
+  <label>Or Upload Your Avatar</label>
+  <input type="file" id="customAvatar" accept="image/*">
+
+  <img id="preview" src="images/avatar1.png">
+
+  <button type="submit">Register</button>
+</form>
 
 <script>
-let selectedAvatar = '';
-const avatarElements = document.querySelectorAll('.avatar-option');
+// Проверка, если пользователь уже залогинен
+const loggedUser = JSON.parse(localStorage.getItem('logged_user'));
+if(loggedUser){ window.location.href='account.html'; }
+
+const avatarOptions = document.querySelectorAll('#avatarOptions img');
+let selectedAvatar = avatarOptions[0].dataset.src;
 const preview = document.getElementById('preview');
 
-// Выбор готовой аватарки
-avatarElements.forEach(img => {
-  img.addEventListener('click', () => {
-    avatarElements.forEach(a => a.classList.remove('selected'));
+avatarOptions.forEach(img=>{
+  img.addEventListener('click', ()=>{
+    avatarOptions.forEach(i=>i.classList.remove('selected'));
     img.classList.add('selected');
-    selectedAvatar = img.src;
+    selectedAvatar = img.dataset.src;
     preview.src = selectedAvatar;
   });
 });
 
-// Загрузка своей аватарки
-document.getElementById('customAvatar').addEventListener('change', e => {
+document.getElementById('customAvatar').addEventListener('change', e=>{
   const file = e.target.files[0];
   if(file){
     const reader = new FileReader();
-    reader.onload = function(ev){
-      preview.src = ev.target.result;
-      selectedAvatar = ev.target.result;
-      avatarElements.forEach(a => a.classList.remove('selected')); // снимаем выбор готовых аватарок
-    };
+    reader.onload = function(evt){
+      preview.src = evt.target.result;
+      selectedAvatar = evt.target.result;
+      avatarOptions.forEach(i=>i.classList.remove('selected'));
+    }
     reader.readAsDataURL(file);
   }
 });
 
-// Регистрация
-document.getElementById('signupBtn').addEventListener('click', () => {
-  const username = document.getElementById('username').value.trim();
+document.getElementById('signupForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const login = document.getElementById('login').value.trim();
   const name = document.getElementById('name').value.trim();
   const password = document.getElementById('password').value.trim();
 
-  if(!username || !name || !password || !selectedAvatar){
-    alert('Please fill all fields and select or upload an avatar!');
-    return;
-  }
+  if(!login || !name || !password) return alert('Fill all fields!');
 
-  const users = JSON.parse(localStorage.getItem('users') || '[]');
-  if(users.some(u => u.username === username)){
-    alert('Username already exists!');
-    return;
-  }
+  // Получаем базу пользователей
+  let users = JSON.parse(localStorage.getItem('users_db')) || [];
+  if(users.find(u=>u.login===login)) return alert('Username already exists!');
 
-  const newUser = { id: users.length+1, username, name, password, avatar: selectedAvatar };
+  // Создаём нового пользователя
+  const id = users.length+1;
+  const newUser = {id, login, username:login, name, password, avatar:selectedAvatar};
   users.push(newUser);
-  localStorage.setItem('users', JSON.stringify(users));
+  localStorage.setItem('users_db', JSON.stringify(users));
   localStorage.setItem('logged_user', JSON.stringify(newUser));
-  alert('Registration successful!');
-  window.location.href = 'account.html';
+
+  alert('Registered! You are now logged in.');
+  window.location.href='account.html';
 });
 </script>
+
 </body>
 </html>
