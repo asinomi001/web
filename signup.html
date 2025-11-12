@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Sign Up</title></head>
+<body style="font-family:Arial;padding:24px;">
+<script>
+if(localStorage.getItem('logged_user')){ alert('Already logged in'); location.href='index.html'; }
+</script>
+<h2>Sign Up</h2>
+<form id="form">
+  <div><label>Username (login):</label><br><input id="username" required></div>
+  <div><label>Name:</label><br><input id="name" required></div>
+  <div><label>Password:</label><br><input id="password" type="password" required></div>
+  <div style="margin-top:8px;">
+    <label>Choose avatar (or upload):</label><br>
+    <img src="images/avatar1.png" class="preset" style="width:64px;height:64px;border-radius:50%;cursor:pointer;margin:6px;border:2px solid transparent">
+    <img src="images/avatar2.png" class="preset" style="width:64px;height:64px;border-radius:50%;cursor:pointer;margin:6px;border:2px solid transparent">
+    <img src="images/avatar3.png" class="preset" style="width:64px;height:64px;border-radius:50%;cursor:pointer;margin:6px;border:2px solid transparent">
+    <div><input type="file" id="uploadAvatar" accept="image/*"></div>
+  </div>
+  <div style="margin-top:12px;"><button type="submit">Register</button></div>
+</form>
+
+<script>
+const presets = document.querySelectorAll('.preset');
+let chosenAvatar = '';
+presets.forEach(p=>{
+  p.onclick = ()=>{
+    presets.forEach(x=>x.style.border='2px solid transparent');
+    p.style.border='2px solid #2b7cff';
+    chosenAvatar = p.src;
+  }
+});
+document.getElementById('uploadAvatar').addEventListener('change', e=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = ev=> {
+    chosenAvatar = ev.target.result;
+    presets.forEach(x=>x.style.border='2px solid transparent');
+  };
+  r.readAsDataURL(f);
+});
+
+document.getElementById('form').addEventListener('submit', e=>{
+  e.preventDefault();
+  const username = document.getElementById('username').value.trim();
+  const name = document.getElementById('name').value.trim();
+  const password = document.getElementById('password').value;
+  const users = JSON.parse(localStorage.getItem('my_users')||'[]');
+  if(users.find(u=>u.username===username)){ alert('Username taken'); return; }
+  const id = users.length?Math.max(...users.map(u=>u.id))+1:1;
+  const user = { id, username, name, password, avatar: chosenAvatar || 'images/avatar1.png', friends: [], saved: [] };
+  users.push(user);
+  localStorage.setItem('my_users', JSON.stringify(users));
+  localStorage.setItem('logged_user', JSON.stringify(user));
+  // ensure my_chats exists
+  if(!localStorage.getItem('my_chats')) localStorage.setItem('my_chats','[]');
+  alert('Registered — you are logged in');
+  location.href='friends.html';
+});
+</script>
+</body>
+</html>
