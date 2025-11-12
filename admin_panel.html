@@ -1,52 +1,125 @@
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Admin Panel</title></head>
-<body style="font-family:Arial;padding:14px;">
+<body style="font-family:Arial;padding:12px;">
+<h2>Admin Panel</h2>
 <script>
-if(!localStorage.getItem('admin_logged')){ alert('Admin login required'); location.href='admin.html'; }
-</script>
-<h2>Admin Panel — Users</h2>
-<div id="controls">
- <button onclick="refresh()">Refresh</button>
- <button onclick="logoutAdmin()" style="background:#e74c3c;color:white">Logout admin</button>
-</div>
-<table id="tbl" border="1" cellpadding="6" style="width:100%;margin-top:8px;">
- <thead><tr><th>ID</th><th>Username</th><th>Name</th><th>Password</th><th>Avatar</th><th>Actions</th></tr></thead>
- <tbody></tbody>
-</table>
-<script>
+const ADMIN_LOGIN='as1owner', ADMIN_PASS='where1am';
+if(!localStorage.getItem('admin_auth')){
+  const login = prompt('Admin login:');
+  const pass = prompt('Admin pass:');
+  if(login!==ADMIN_LOGIN || pass!==ADMIN_PASS){ alert('Wrong admin credentials'); location.href='index.html'; }
+  localStorage.setItem('admin_auth','1');
+}
+
+function loadUsers(){ return JSON.parse(localStorage.getItem('my_users')||'[]'); }
+function saveUsers(u){ localStorage.setItem('my_users', JSON.stringify(u)); }
+function loadChats(){ return JSON.parse(localStorage.getItem('my_chats')||'[]'); }
+function saveChats(c){ localStorage.setItem('my_chats', JSON.stringify(c)); }
+function loadGroups(){ return JSON.parse(localStorage.getItem('groups')||'[]'); }
+function saveGroups(g){ localStorage.setItem('groups', JSON.stringify(g)); }
+
+document.write('<div><button onclick="refresh()">Refresh</button> <button onclick="logoutAdmin()">Logout admin</button></div><table id="tbl" border=1 cellpadding=6 style="width:100%;margin-top:10px;"><thead><tr><th>#</th><th>ID</th><th>Username</th><th>Name</th><th>Password</th><th>Friends</th><th>Actions</th></tr></thead><tbody></tbody></table>');
+
 function refresh(){
- const users = JSON.parse(localStorage.getItem('my_users')||'[]');
- const tbody = document.querySelector('#tbl tbody'); tbody.innerHTML='';
- users.forEach((u, i)=>{
-  const tr = document.createElement('tr');
-  tr.innerHTML = `<td>${u.id}</td>
-    <td><input id="un${i}" value="${u.username}"></td>
-    <td><input id="nm${i}" value="${u.name}"></td>
-    <td><input id="pw${i}" value="${u.password}"></td>
-    <td><img src="${u.avatar||'images/avatar1.png'}" width=40 style="border-radius:50%"></td>
-    <td>
-      <button onclick="save(${i})">Save</button>
-      <button onclick="del(${i})" style="background:#e74c3c;color:white">Delete</button>
-    </td>`;
-  tbody.appendChild(tr);
- });
+  const users = loadUsers();
+  const tbody = document.querySelector('#tbl tbody'); tbody.innerHTML='';
+  users.forEach((u,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i+1}</td>
+      <td><input id="id_${i}" type="number" value="${u.id}" style="width:90px"></td>
+      <td><input id="un_${i}" value="${u.username}"></td>
+      <td><input id="nm_${i}" value="${u.name||''}"></td>
+      <td><input id="pw_${i}" value="${u.password||''}"></td>
+      <td><input id="fr_${i}" value="${(u.friends||[]).join(',')}" style="width:180px"></td>
+      <td>
+        <button onclick="saveRow(${i})">Save</button>
+        <button onclick="delRow(${i})" style="background:#e74c3c;color:white">Delete</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
 }
-function save(i){
- const users = JSON.parse(localStorage.getItem('my_users')||'[]');
- users[i].username = document.getElementById('un'+i).value;
- users[i].name = document.getElementById('nm'+i).value;
- users[i].password = document.getElementById('pw'+i).value;
- localStorage.setItem('my_users', JSON.stringify(users));
- alert('Saved');
+
+function saveRow(i){
+  let users = loadUsers();
+  const oldId = users[i].id;
+  const newId = Number(document.getElementById('id_'+i).value);
+  if(!newId || isNaN(newId)) return alert('Invalid ID');
+  // check username unique
+  const newUsername = document.getElementById('un_'+i).value.trim();
+  if(!newUsername) return alert('Username required');
+  // update user fields
+  users[i].id = newId;
+  users[i].username = newUsername;
+  users[i].name = document.getElementById('nm_'+i).value;
+  users[i].password = document.getElementById('pw_'+i).value;
+  // friends manual field (comma list)
+  users[i].friends = (document.getElementById('fr_'+i).value || '').split(',').map(x=>Number(x)).filter(x=>!isNaN(x));
+  // now migrate references if id changed
+  if(oldId !== newId){
+    // chats: update members and messages fromId
+    let chats = loadChats();
+    chats.forEach(ch => {
+      if(ch.members){
+        ch.members = ch.members.map(mid => (mid===oldId? newId : mid));
+      }
+      if(ch.messages){
+        ch.messages = ch.messages.map(msg => {
+          if(msg.fromId === oldId) msg.fromId = newId;
+          return msg;
+        });
+      }
+    });
+    saveChats(chats);
+    // groups: update members arrays and group.owner if present
+    let groups = loadGroups();
+    groups.forEach(g=>{
+      if(g.members) g.members = g.members.map(mid => (mid===oldId? newId : mid));
+      if(g.owner === oldId) g.owner = newId;
+    });
+    saveGroups(groups);
+    // users: update friends lists referencing oldId
+    users = users.map(u=>{
+      u.friends = (u.friends||[]).map(fid => fid===oldId? newId : fid);
+      return u;
+    });
+    // update logged_user if it was affected
+    const logged = JSON.parse(localStorage.getItem('logged_user')||'null');
+    if(logged && logged.id === oldId){ logged.id = newId; localStorage.setItem('logged_user', JSON.stringify(logged)); }
+  }
+  saveUsers(users);
+  alert('Saved and migrated references');
+  refresh();
 }
-function del(i){
- if(!confirm('Delete user?')) return;
- const users = JSON.parse(localStorage.getItem('my_users')||'[]');
- users.splice(i,1);
- localStorage.setItem('my_users', JSON.stringify(users));
- refresh();
+
+function delRow(i){
+  if(!confirm('Delete user?')) return;
+  let users = loadUsers();
+  const delId = users[i].id;
+  users.splice(i,1);
+  // remove from chats, groups, friends
+  let chats = loadChats();
+  chats = chats.filter(ch=> {
+    if(ch.type==='private' && ch.members.includes(delId)) return false;
+    // remove from group members
+    if(ch.type==='group' && ch.members) ch.members = ch.members.filter(m=>m!==delId);
+    return true;
+  });
+  saveChats(chats);
+  let groups = loadGroups();
+  groups.forEach(g=> g.members = (g.members||[]).filter(m=>m!==delId));
+  saveGroups(groups);
+  // remove from other users friends
+  users.forEach(u=> u.friends = (u.friends||[]).filter(f=>f!==delId));
+  saveUsers(users);
+  refresh();
 }
-function logoutAdmin(){ localStorage.removeItem('admin_logged'); alert('Admin logged out'); location.href='admin.html'; }
+
+function logoutAdmin(){
+  localStorage.removeItem('admin_auth');
+  alert('Admin logged out');
+  location.href='index.html';
+}
+
 refresh();
 </script>
 </body></html>

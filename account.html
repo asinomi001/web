@@ -1,51 +1,52 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Account</title></head>
-<body style="font-family:Arial;padding:24px;">
+<html>
+<head>
+  <title>My Account</title>
+  <link rel="icon" type="images/x-icon" href="images/title.ico" />
+  <style>
+    body { font-family: "Comic Sans MS", Arial, sans-serif; text-align: center; background: #f0f4ff; }
+    h1 { color: #2b7cff; }
+    button { background: #2b7cff; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin: 5px; transition: background 0.2s; }
+    button:hover { background: #1a5fd1; }
+    #userAvatar { width:100px; height:100px; border-radius:50%; border:2px solid #2b7cff; object-fit:cover; margin: 10px 0; }
+    .account-info { font-size: 18px; margin: 5px 0; }
+  </style>
+</head>
+<body>
+
+<h1>My Account</h1>
+
+<div id="accountInfo">
+  <img id="userAvatar" src="" alt="Avatar">
+  <p class="account-info"><strong>ID:</strong> <span id="userId"></span></p>
+  <p class="account-info"><strong>Username (Login):</strong> <span id="userLogin"></span></p>
+  <p class="account-info"><strong>Name:</strong> <span id="userName"></span></p>
+  <p class="account-info"><strong>Password:</strong> <span id="userPassword"></span></p>
+</div>
+
+<button id="logoutBtn">Logout</button>
+
 <script>
-const me = JSON.parse(localStorage.getItem('logged_user'));
-if(!me){ alert('Please login'); location.href='login.html'; }
-</script>
+// Получаем залогиненного пользователя
+const currentUser = JSON.parse(localStorage.getItem('logged_user'));
 
-<h2>My Account</h2>
-<img id="av" width="100" style="border-radius:50%"><br>
-<b>ID:</b> <span id="myid"></span><br>
-<b>Username:</b> <span id="myusername"></span><br>
-<label>Name:</label><br><input id="myname"><br>
-<label>Password:</label><br><input id="mypassword" type="password"><br>
-<label>Change avatar:</label><br><input type="file" id="changeAvatar"><br><br>
-<button id="save">Save</button>
-<button id="logout" style="background:#e74c3c;color:white">Logout</button>
+// Если пользователь не залогинен → возвращаем на index.html
+if(!currentUser){
+  window.location.href = 'index.html';
+} else {
+  document.getElementById('userId').textContent = currentUser.id || '-';
+  document.getElementById('userLogin').textContent = currentUser.login || '-';
+  document.getElementById('userName').textContent = currentUser.name || '-';
+  document.getElementById('userPassword').textContent = currentUser.password || '-';
+  if(currentUser.avatar) document.getElementById('userAvatar').src = currentUser.avatar;
+}
 
-<script>
-document.getElementById('av').src = me.avatar || 'images/avatar1.png';
-document.getElementById('myid').textContent = me.id;
-document.getElementById('myusername').textContent = me.username;
-document.getElementById('myname').value = me.name;
-document.getElementById('mypassword').value = me.password;
-
-document.getElementById('changeAvatar').addEventListener('change', e=>{
-  const f = e.target.files[0]; if(!f) return;
-  const r = new FileReader();
-  r.onload = ev => { document.getElementById('av').src = ev.target.result; me.avatar = ev.target.result; };
-  r.readAsDataURL(f);
+// Кнопка выхода
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  localStorage.removeItem('logged_user'); // удаляем залогиненного пользователя
+  window.location.href = 'index.html'; // возвращаем на главную
 });
-
-document.getElementById('save').onclick = ()=>{
-  const users = JSON.parse(localStorage.getItem('my_users')||'[]');
-  const idx = users.findIndex(u=>u.id===me.id);
-  users[idx].name = document.getElementById('myname').value;
-  users[idx].password = document.getElementById('mypassword').value;
-  users[idx].avatar = document.getElementById('av').src;
-  localStorage.setItem('my_users', JSON.stringify(users));
-  localStorage.setItem('logged_user', JSON.stringify(users[idx]));
-  alert('Saved');
-};
-
-document.getElementById('logout').onclick = ()=>{
-  localStorage.removeItem('logged_user');
-  alert('Logged out');
-  location.href='login.html';
-};
 </script>
+
 </body>
 </html>
